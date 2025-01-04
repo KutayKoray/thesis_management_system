@@ -1,1 +1,1 @@
-# thesis_management_system
+# db_project

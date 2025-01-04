@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Thesis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        nav {
+            background-color: #333;
+            color: white;
+            padding: 1em;
+            margin-bottom: 50px;
+        }
+
+        nav ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            gap: 1em;
+        }
+
+        nav ul li {
+            display: inline;
+        }
+
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+        }
+
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bb9;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #007bb9;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <ul>
+            <li><a href="./search.html">Search Thesis</a></li>
+            <li><a href="./add_thesis.html">Add Thesis</a></li>
+            <li><a href="./index.html">Main</a></li>
+        </ul>
+    </nav>
+
+    <form id="thesis-form">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" required placeholder="Title">
+
+        <label for="author_first_name">Author</label>
+        <input type="text" id="author_first_name" name="author_first_name" required placeholder="Author First Name">
+        <label for="author_last_name"></label>
+        <input type="text" id="author_last_name" name="author_last_name" required placeholder="Author Last Name">
+
+        <label for="year">Year</label>
+        <input type="number" id="year" name="year" required>
+
+        <label for="type">Type</label>
+        <select id="type" name="type" required>
+            <option value="Master">Master</option>
+            <option value="Doctorate">Doctorate</option>
+            <option value="Phd">Phd</option>
+            <option value="Research">Research</option>
+        </select>
+
+        <label for="language">Language</label>
+        <select id="language" name="language" required>
+        </select>
+
+        <label for="university">University</label>
+        <select id="university" name="university" required>
+        </select>
+
+        <label for="institute">Institute</label>
+        <select id="institute" name="institute" required>
+        </select>
+
+        <label for="submission_date">Submission Date</label>
+        <input type="date" id="submission_date" name="submission_date">
+
+        <label for="topic">Topic</label>
+        <input type="text" id="topic" name="topic" placeholder="e.g., Computer Science">
+
+        <label for="keywords">Keywords</label>
+        <input type="text" id="keywords" name="keywords" placeholder="e.g., AI, Machine Learning (for each keyword split with ',')">
+
+        <label for="number_of_pages">Number Of Pages</label>
+        <input type="number" id="number_of_pages" name="number_of_pages" placeholder="e.g., 100">
+
+        <label for="abstract">Abstract</label>
+        <textarea id="abstract" name="abstract" rows="5" placeholder="Enter thesis abstract here..."></textarea>
+
+        <button type="submit">Add Thesis</button>
+    </form>
+
+    <script>
+        document.getElementById("thesis-form").addEventListener("submit", async function (event) {
+            const author = {
+                first_name: document.getElementById("author_first_name").value,
+                last_name: document.getElementById("author_last_name").value
+            }
+            if (!author) {
+                return;
+            }
+
+            fetch(`http://localhost:8000/authors/`)
+                .then(response => response.json())
+                .then(authors => checkAuthor(authors, author))
+                .catch(err => console.error("Error loading authors:", err));
+
+            console.log(author);
+
+            event.preventDefault();
+
+            let keywords = document.getElementById("keywords").value;
+
+            let keywordsArray = keywords.split(",").map(function(item) {
+                return item.trim();
+            });
+
+            for (let i = 0; i < keywordsArray.length; i++) {
+                checkKeyword(keywordsArray[i]);
+            }
+
+            const formData = {
+                title: document.getElementById("title").value,
+                author_id: localStorage.getItem("author_id"),
+                year: document.getElementById("year").value,
+                type: document.getElementById("type").value,
+                language_id: document.getElementById("language").value,
+                university_id: document.getElementById("university").value,
+                institute_id: document.getElementById("institute").value,
+                topic: document.getElementById("topic").value,
+                abstract: document.getElementById("abstract").value,
+                number_of_pages: document.getElementById("number_of_pages").value,
+                submission_date: document.getElementById("submission_date").value
+            }
+
+
+            console.log(formData);
+
+            try {
+                const response = await fetch("http://localhost:8000/theses/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                if (response.ok) {
+                    alert("Thesis added successfully.");
+                    event.target.reset();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Failed to add thesis: ${formData}`);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("error while adding the thesis.");
+            }
+        });
+
+        function checkKeyword(keyword) {
+            fetch(`http://localhost:8000/keywords/`)
+                .then(response => response.json())
+                .then(keywords => {
+                    var keywordExists = false;
+                    keywords.forEach(k => {
+                        if (k.keyword_name == keyword) {
+                            keywordExists = true;
+                            localStorage.setItem("keyword_id", k.keyword_id);
+                        }
+                    });
+                    if (!keywordExists) {
+                        fetch(`http://localhost:8000/keywords/`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({keyword_name: keyword}),
+                        })
+                            .then(response => response.json())
+                            .then(keyword => localStorage.setItem("keyword_id", keyword.keyword_id))
+                            .catch(err => console.error("Error adding keyword:", err));
+                    }
+                    console.log(keywordExists);
+                })
+                .catch(err => console.error("Error loading keywords:", err));
+        }
+
+        function loadSelectOptions() {
+            var apiUrl = 'http://localhost:8000';
+
+            fetch(`${apiUrl}/universities`)
+                .then(response => response.json())
+                .then(universities => renderUniversitiesOptions(universities))
+                .catch(err => console.error("Error loading universities:", err));
+
+            fetch(`${apiUrl}/languages`)
+                .then(response => response.json())
+                .then(languages => renderLanguagesOptions(languages))
+                .catch(err => console.error("Error loading languages:", err));
+        }
+
+        function renderUniversitiesOptions(universities) {
+            const select = document.getElementById("university");
+            select.innerHTML = "<option value=''>Select a university</option>";
+
+            universities.forEach(university => {
+                const option = document.createElement("option");
+                option.value = university.university_id;
+                option.textContent = university.name;
+                select.appendChild(option);
+            });
+        }
+
+        function renderInstitutesOptions(institutes) {
+            const select = document.getElementById("institute");
+            select.innerHTML = "<option value=''>Select an institute</option>";
+            institutes.forEach(institute => {
+                const option = document.createElement("option");
+                option.value = institute.institute_id;
+                option.textContent = institute.name;
+                select.appendChild(option);
+            });
+        }
+
+        function renderLanguagesOptions(languages) {
+            const select = document.getElementById("language");
+            select.innerHTML = "<option value=''>Select a language</option>";
+            languages.forEach(language => {
+                const option = document.createElement("option");
+                option.value = language.language_id;
+                option.textContent = language.language_name;
+                select.appendChild(option);
+            });
+            console.log(languages);
+        }
+
+        loadSelectOptions();
+
+        document.getElementById("university").addEventListener("change", function (event) {
+            const universityId = event.target.value;
+            console.log(universityId);
+            if (!universityId) {
+                return;
+            }
+
+            fetch(`http://localhost:8000/universities/${universityId}/institutes`)
+                .then(response => response.json())
+                .then(institutes => renderInstitutesOptions(institutes))
+                .catch(err => console.error("Error loading institutes:", err));
+        });
+
+        function checkAuthor(authors, author) {
+                var authorExists = false;
+                authors.forEach(a => {
+                    if (a.first_name == author.first_name && a.last_name == author.last_name) {
+                        authorExists = true;
+                        localStorage.setItem("author_id", a.author_id);
+                    }
+                });
+                if (!authorExists) {
+                    fetch(`http://localhost:8000/authors/`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(author),
+                    })
+                        .then(response => response.json())
+                        .then(author => localStorage.setItem("author_id", author.author_id))
+                        .catch(err => console.error("Error adding author:", err));
+                }
+                console.log(authorExists);
+            }
+
+    </script>
+</body>
+</html>
